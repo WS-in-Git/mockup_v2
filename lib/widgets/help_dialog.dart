@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-// Ein wiederverwendbares Dialog-Widget zur Anzeige von mehrseitigen Hilfetexten
-// mit Bildern, Wisch-Funktionalität und Seitenanzeige.
+// Ein wiederverwendbares Widget zur Anzeige von Hilfeseiten.
 class HelpDialog extends StatefulWidget {
-  // Eine Liste von Hilfeseiten, jede als Map mit Titel, Inhalt und optionalem Bild.
   final List<Map<String, dynamic>> pages;
 
   const HelpDialog({super.key, required this.pages});
@@ -13,16 +11,8 @@ class HelpDialog extends StatefulWidget {
 }
 
 class _HelpDialogState extends State<HelpDialog> {
-  // PageController zur Steuerung der PageView-Navigation.
-  late final PageController _pageController;
-  // Ein State-Variable, um den Index der aktuellen Seite zu speichern.
-  int _currentPageIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
 
   @override
   void dispose() {
@@ -32,101 +22,102 @@ class _HelpDialogState extends State<HelpDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      // Titel des Dialogs.
-      title: const Text('Hilfe'),
-      // Der content wird mit einer festen Größe für den PageView versehen.
-      content: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.8,
-        height: MediaQuery.of(context).size.height * 0.5,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Der PageView wird in einem Container mit fester Höhe dargestellt.
-            SizedBox(
-              height: 300, // Feste Höhe, um Layout-Probleme zu vermeiden.
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: widget.pages.length,
-                // Diese Callback-Funktion wird aufgerufen, wenn die Seite wechselt.
-                // Wir aktualisieren den Zustand, um den aktuellen Index zu speichern.
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentPageIndex = index;
-                  });
-                },
-                itemBuilder: (context, index) {
-                  final currentPage = widget.pages[index];
-                  return SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        // Titel der aktuellen Seite.
-                        Text(
-                          currentPage['title'],
-                          style: Theme.of(context).textTheme.headlineSmall,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        // Das Bild wurde durch einen Container mit Farbe ersetzt, um Netzwerkfehler auszuschließen.
-                        if (currentPage['image'] != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 16.0),
-                            child: Container(
-                              height: 100,
-                              width: 100,
-                              color: Colors.blueGrey,
-                              child: const Center(
-                                child: Text(
-                                  'Bild-Platzhalter',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ),
-                        // Inhalt der aktuellen Seite.
-                        Text(currentPage['content']),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Die Navigationspunkte und der Schließen-Button.
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Die Punkte für die Seitenanzeige.
-                Row(
-                  children: List.generate(widget.pages.length, (index) {
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                      height: 8.0,
-                      width: 8.0,
-                      decoration: BoxDecoration(
-                        // Die Farbe der Punkte wird nun durch den Zustandsindex gesteuert.
-                        color: _currentPageIndex == index
-                            ? Theme.of(context).primaryColor
-                            : Colors.grey,
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
-                    );
-                  }),
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Titelleiste mit dem Schließen-Icon
+          Stack(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12.0),
+                    topRight: Radius.circular(12.0),
+                  ),
                 ),
-                // Schließen-Button.
-                TextButton(
+                child: const Text(
+                  'Hilfe',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              // Das "X"-Icon zum Schließen des Dialogs
+              Positioned(
+                right: 0,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
-                  child: const Text('Schließen'),
                 ),
-              ],
+              ),
+            ],
+          ),
+          // Seitenansicht für die Hilfeseiten
+          // Hier wurde Expanded durch SizedBox ersetzt, um die Höhe des Dialogs zu begrenzen.
+          SizedBox(
+            height:
+                350.0, // Feste Höhe, damit mehr vertikaler Platz frei bleibt
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: widget.pages.length,
+              onPageChanged: (int page) {
+                setState(() {
+                  _currentPage = page;
+                });
+              },
+              itemBuilder: (context, index) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Titel der aktuellen Hilfeseite
+                      Text(
+                        widget.pages[index]['title'],
+                        style: const TextStyle(
+                          fontSize: 18.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8.0),
+                      // Inhalt der aktuellen Hilfeseite
+                      Text(widget.pages[index]['content']),
+                    ],
+                  ),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+          // Seitenanzeige-Indikator
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                widget.pages.length,
+                (index) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: CircleAvatar(
+                    radius: 4,
+                    backgroundColor: _currentPage == index
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

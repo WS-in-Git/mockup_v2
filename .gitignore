@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Miscellaneous
 *.class
 *.log
@@ -44,6 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-=======
 
->>>>>>> 069fe23d065fc32d320798f5684dddc0e92a9a33
+# Eigene Einträge
+# Der Ordner assets/videos/sources und dessen gesamter Inhalt wird von Git ignoriert.
+/assets/videos/sources/
