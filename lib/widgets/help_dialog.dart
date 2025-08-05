@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart'; // Import für SVG-Bilder
 
-// Ein wiederverwendbares Widget zur Anzeige von Hilfeseiten.
 class HelpDialog extends StatefulWidget {
+  // Eine Liste von Seiten, die im Dialog angezeigt werden sollen.
   final List<Map<String, dynamic>> pages;
 
   const HelpDialog({super.key, required this.pages});
@@ -11,8 +12,24 @@ class HelpDialog extends StatefulWidget {
 }
 
 class _HelpDialogState extends State<HelpDialog> {
+  // Der Controller für den PageView, um die Seiten zu wechseln.
   final PageController _pageController = PageController();
-  int _currentPage = 0;
+  // Der Index der aktuell angezeigten Seite.
+  int _currentPageIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fügt einen Listener hinzu, um den aktuellen Seitenindex zu verfolgen.
+    _pageController.addListener(() {
+      // Aktualisiert den Zustand, wenn die Seite gewechselt wird.
+      if (_pageController.page != null) {
+        setState(() {
+          _currentPageIndex = _pageController.page!.round();
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -20,105 +37,132 @@ class _HelpDialogState extends State<HelpDialog> {
     super.dispose();
   }
 
+  // Funktion, die das Icon-Widget basierend auf dem Typ erstellt.
+  Widget _buildIconWidget(dynamic iconData, BuildContext context) {
+    if (iconData is String && iconData.endsWith('.svg')) {
+      // Wenn es sich um einen SVG-Pfad handelt, verwende SvgPicture.asset
+      return SvgPicture.asset(
+        iconData,
+        width: 48,
+        height: 48,
+        // Optionaler colorFilter, falls das SVG eine einheitliche Farbe bekommen soll
+        // colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary, BlendMode.srcIn),
+      );
+    } else if (iconData is IconData) {
+      // Wenn es sich um ein Material-Icon handelt, verwende das Icon-Widget
+      return Icon(
+        iconData,
+        size: 48,
+        color: Theme.of(context).colorScheme.primary,
+      );
+    }
+    // Fallback, wenn kein Icon gefunden wird.
+    return const Icon(Icons.help_outline, size: 48);
+  }
+
+  // Funktion zum Erstellen der Navigationspunkte
+  Widget _buildPageIndicator() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(widget.pages.length, (index) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4.0),
+          width: 8.0,
+          height: 8.0,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _currentPageIndex == index ? Colors.deepPurple : Colors.grey,
+          ),
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return AlertDialog(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      title: Stack(
+        // Verwende Stack, um das "X"-Icon zu positionieren
         children: [
-          // Titelleiste mit dem Schließen-Icon
-          Stack(
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12.0),
-                    topRight: Radius.circular(12.0),
-                  ),
-                ),
-                child: const Text(
-                  'Hilfe',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20.0,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+          Align(
+            alignment: Alignment.center,
+            child: Text(
+              'Hilfe',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
               ),
-              // Das "X"-Icon zum Schließen des Dialogs
-              Positioned(
-                right: 0,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ),
-            ],
-          ),
-          // Seitenansicht für die Hilfeseiten
-          // Hier wurde Expanded durch SizedBox ersetzt, um die Höhe des Dialogs zu begrenzen.
-          SizedBox(
-            height:
-                350.0, // Feste Höhe, damit mehr vertikaler Platz frei bleibt
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: widget.pages.length,
-              onPageChanged: (int page) {
-                setState(() {
-                  _currentPage = page;
-                });
-              },
-              itemBuilder: (context, index) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Titel der aktuellen Hilfeseite
-                      Text(
-                        widget.pages[index]['title'],
-                        style: const TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8.0),
-                      // Inhalt der aktuellen Hilfeseite
-                      Text(widget.pages[index]['content']),
-                    ],
-                  ),
-                );
-              },
+              textAlign: TextAlign.center,
             ),
           ),
-          // Seitenanzeige-Indikator
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                widget.pages.length,
-                (index) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: CircleAvatar(
-                    radius: 4,
-                    backgroundColor: _currentPage == index
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey,
-                  ),
-                ),
-              ),
+          Align(
+            alignment: Alignment.topRight,
+            child: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.of(context).pop(),
             ),
           ),
         ],
       ),
+      content: SingleChildScrollView(
+        // Hinzugefügt: Stellt sicher, dass der Inhalt scrollbar ist
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.8,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ConstrainedBox(
+                // Geändert von SizedBox
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4,
+                ), // Dynamische maximale Höhe
+                child: PageView(
+                  controller: _pageController,
+                  children: widget.pages.map((page) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Ruft die neue Funktion auf, um das Icon zu erstellen
+                          _buildIconWidget(page['icon'], context),
+                          const SizedBox(height: 16),
+                          Text(
+                            page['title'],
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            page['content'],
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Ruft die neue Funktion auf, um die Navigationspunkte anzuzeigen
+              _buildPageIndicator(),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        // Keine Buttons mehr im actions-Abschnitt, da das "X" im title-Abschnitt die Schließfunktion übernimmt.
+      ],
     );
   }
 }

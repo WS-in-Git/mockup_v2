@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:convert'; // Import für die Konvertierung von Objekten in JSON-Strings
+import 'package:shared_preferences/shared_preferences.dart'; // Import des Pakets für lokale Datenspeicherung
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:mockup_v2/screens/edit_list_screen.dart';
 import 'package:mockup_v2/widgets/help_dialog.dart';
-import 'package:mockup_v2/widgets/drawer_widget.dart'; // Import des neuen Drawer-Widgets
+import 'package:mockup_v2/widgets/drawer_widget.dart';
 
 // Die Hauptseite der App, die eine Liste von Todo-Gruppen anzeigt.
 class HomeScreen extends StatefulWidget {
@@ -12,53 +15,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Eine Liste aller Einkaufslisten.
-  List<Map<String, dynamic>> _shoppingLists = [
-    {
-      'name': 'Einkaufsliste',
-      'items': [
-        {
-          'category': 'Obst & Gemüse',
-          'tasks': [
-            {'title': 'Äpfel', 'isDone': false},
-            {'title': 'Bananen', 'isDone': false},
-            {'title': 'Salat', 'isDone': true},
-          ],
-          'isCollapsed': false,
-        },
-        {
-          'category': 'Milchprodukte',
-          'tasks': [
-            {'title': 'Milch', 'isDone': false},
-            {'title': 'Käse', 'isDone': true},
-            {'title': 'Joghurt', 'isDone': true},
-          ],
-          'isCollapsed': false,
-        },
-        {
-          'category': 'Brot & Gebäck',
-          'tasks': [
-            {'title': 'Vollkornbrot', 'isDone': true},
-            {'title': 'Brötchen', 'isDone': true},
-          ],
-          'isCollapsed': false,
-        },
-      ],
-    },
-    {
-      'name': 'Wochenendeinkauf',
-      'items': [
-        {
-          'category': 'Getränke',
-          'tasks': [
-            {'title': 'Wasser', 'isDone': false},
-            {'title': 'Cola', 'isDone': false},
-          ],
-          'isCollapsed': false,
-        },
-      ],
-    },
-  ];
+  // Eine Liste aller Einkaufslisten. Wird beim Start mit Initialdaten befüllt,
+  // falls keine gespeicherten Daten gefunden werden.
+  List<Map<String, dynamic>> _shoppingLists = [];
 
   // Index der aktuell ausgewählten Liste.
   int _currentListIndex = 0;
@@ -70,14 +29,125 @@ class _HomeScreenState extends State<HomeScreen> {
       'content':
           'Tippen Sie auf einen Artikel, um ihn als erledigt zu markieren oder die Markierung aufzuheben. '
           'Sie können die Liste der Artikel innerhalb einer Kategorie per Drag-and-drop neu anordnen.',
+      'icon': Icons.list_alt, // Material Icon
     },
     {
       'title': 'Kategorien',
       'content':
           'Tippen Sie auf eine Kategoriezeile, um die Liste ein- oder auszublenden. '
           'Die Zahlen neben der Kategorie zeigen die Anzahl der erledigten und unerledigten Artikel an.',
+      'icon': 'assets/icons/category_pencil.svg', // SVG-Icon
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadShoppingLists();
+  }
+
+  // Lädt die Einkaufslisten und den aktuellen Index aus dem lokalen Speicher.
+  Future<void> _loadShoppingLists() async {
+    final prefs = await SharedPreferences.getInstance();
+    final listsString = prefs.getString('shopping_lists');
+    final listIndex = prefs.getInt('current_list_index');
+
+    if (listsString != null) {
+      final decodedData = json.decode(listsString);
+      // Überprüfen, ob die Daten eine Liste sind, bevor mit der Konvertierung begonnen wird
+      if (decodedData is List) {
+        setState(() {
+          // Explizite Konvertierung der dynamischen Listen und Maps, um den TypeError zu vermeiden
+          _shoppingLists = decodedData.map((list) {
+            final listMap = list as Map<String, dynamic>;
+            final itemsList = listMap['items'] as List;
+            final newItemsList = itemsList.map((item) {
+              final itemMap = item as Map<String, dynamic>;
+              final tasksList = itemMap['tasks'] as List;
+              final newTasksList = tasksList.map((task) {
+                return task as Map<String, dynamic>;
+              }).toList();
+              itemMap['tasks'] = newTasksList;
+              return itemMap;
+            }).toList();
+            listMap['items'] = newItemsList;
+            return listMap;
+          }).toList();
+          _currentListIndex = listIndex ?? 0;
+        });
+      }
+    } else {
+      // Wenn keine Daten vorhanden sind, initialisiere mit Beispieldaten.
+      // setState wird hier verwendet, damit die Benutzeroberfläche nach dem Laden
+      // der Initialdaten neu aufgebaut wird und der Ladekreis verschwindet.
+      setState(() {
+        _shoppingLists = [
+          {
+            'name': 'Einkaufsliste',
+            'items': [
+              {
+                'category': 'Obst & Gemüse',
+                'tasks': [
+                  {'title': 'Äpfel', 'isDone': false},
+                  {'title': 'Bananen', 'isDone': false},
+                  {'title': 'Salat', 'isDone': true},
+                ],
+                'isCollapsed': false,
+              },
+              {
+                'category': 'Milchprodukte',
+                'tasks': [
+                  {'title': 'Milch', 'isDone': false},
+                  {'title': 'Käse', 'isDone': true},
+                  {'title': 'Joghurt', 'isDone': true},
+                ],
+                'isCollapsed': false,
+              },
+              {
+                'category': 'Brot & Gebäck',
+                'tasks': [
+                  {'title': 'Vollkornbrot', 'isDone': true},
+                  {'title': 'Brötchen', 'isDone': true},
+                ],
+                'isCollapsed': false,
+              },
+            ],
+          },
+          {
+            'name': 'Wochenendeinkauf',
+            'items': [
+              {
+                'category': 'Getränke',
+                'tasks': [
+                  {'title': 'Wasser', 'isDone': false},
+                  {'title': 'Cola', 'isDone': false},
+                ],
+                'isCollapsed': false,
+              },
+              {
+                'category': 'Bürobedarf',
+                'tasks': [
+                  {'title': 'Stifte', 'isDone': false},
+                  {'title': 'Papier', 'isDone': false},
+                ],
+                'isCollapsed': false,
+              },
+            ],
+          },
+        ];
+        _currentListIndex = 0;
+      });
+      await _saveShoppingLists();
+    }
+  }
+
+  // Speichert die Einkaufslisten und den aktuellen Index lokal.
+  Future<void> _saveShoppingLists() async {
+    final prefs = await SharedPreferences.getInstance();
+    final listsString = json.encode(_shoppingLists);
+    await prefs.setString('shopping_lists', listsString);
+    await prefs.setInt('current_list_index', _currentListIndex);
+  }
 
   // Ändert den Zustand (erledigt/unerledigt) eines bestimmten Todo-Items.
   void _toggleTodoItem(int groupIndex, int taskIndex, bool? isDone) {
@@ -85,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _shoppingLists[_currentListIndex]['items'][groupIndex]['tasks'][taskIndex]['isDone'] =
           isDone!;
     });
+    _saveShoppingLists();
   }
 
   // Schaltet den Einklapp-Zustand einer Gruppe um.
@@ -93,6 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _shoppingLists[_currentListIndex]['items'][index]['isCollapsed'] =
           !_shoppingLists[_currentListIndex]['items'][index]['isCollapsed'];
     });
+    _saveShoppingLists();
   }
 
   // Navigiert zum Bearbeitungsbildschirm und aktualisiert die Liste, falls Änderungen vorgenommen wurden.
@@ -114,6 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _shoppingLists[_currentListIndex]['name'] = updatedData['name'];
         _shoppingLists[_currentListIndex]['items'] = updatedData['items'];
       });
+      _saveShoppingLists();
     }
   }
 
@@ -122,6 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _currentListIndex = index;
     });
+    _saveShoppingLists();
     Navigator.pop(context); // Schließt den Drawer
   }
 
@@ -143,6 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
         item['isCollapsed'] = false;
       }
     });
+    _saveShoppingLists();
   }
 
   // Klappt alle Kategorien zu
@@ -152,6 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
         item['isCollapsed'] = true;
       }
     });
+    _saveShoppingLists();
   }
 
   // Überprüft, ob es vollständig erledigte Kategorien gibt.
@@ -172,6 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     });
+    _saveShoppingLists();
   }
 
   // Überprüft, ob alle Kategorien eingeklappt sind.
@@ -184,6 +261,10 @@ class _HomeScreenState extends State<HomeScreen> {
   // Erstellt die Benutzeroberfläche der App.
   @override
   Widget build(BuildContext context) {
+    if (_shoppingLists.isEmpty) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     // Die aktuelle Liste, die angezeigt werden soll.
     final currentList = _shoppingLists[_currentListIndex];
     // Hole die Hintergrundfarbe der AppBar, um sie auch für die BottomAppBar zu verwenden.
@@ -255,6 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
             );
             _shoppingLists[_currentListIndex]['items'].insert(newIndex, item);
           });
+          _saveShoppingLists();
         },
         children: [
           // Wir erstellen eine expandierbare Kachel für jede Gruppe.
@@ -297,6 +379,40 @@ class _HomeScreenState extends State<HomeScreen> {
     final undoneCount = tasks.where((task) => !task['isDone']).length;
     final doneCount = tasks.where((task) => task['isDone']).length;
     final totalCount = undoneCount + doneCount;
+    final bool isCollapsed = currentList['items'][groupIndex]['isCollapsed'];
+
+    // Mapping von Kategorienamen zu Icons. SVG-Pfade werden als String gespeichert.
+    final Map<String, dynamic> categoryIcons = {
+      'Obst & Gemüse': Icons.local_grocery_store,
+      'Milchprodukte': Icons.egg,
+      'Brot & Gebäck': Icons.bakery_dining,
+      'Getränke': Icons.local_drink,
+      'Bürobedarf': 'assets/icons/category_pencil.svg', // SVG-Asset-Pfad
+    };
+
+    // Größe der Icons für Material- und SVG-Icons
+    final double iconSize = 30.0;
+
+    // Hole das passende Icon oder ein Fallback-Icon, wenn keines gefunden wird.
+    final dynamic iconData = categoryIcons[categoryName] ?? Icons.folder;
+
+    // Überprüfe, ob es sich um ein SVG-Asset oder ein Material-Icon handelt
+    Widget categoryIconWidget;
+    if (iconData is String && iconData.endsWith('.svg')) {
+      categoryIconWidget = SvgPicture.asset(
+        iconData,
+        width: iconSize, // Nutzt die neue Variable für die Breite
+        height: iconSize, // Nutzt die neue Variable für die Höhe
+      );
+    } else {
+      categoryIconWidget = Icon(
+        iconData,
+        color: isCollapsed
+            ? Colors.grey
+            : Theme.of(context).colorScheme.primary,
+        size: iconSize, // Passt die Größe für Material Icons an
+      );
+    }
 
     return Padding(
       key: ValueKey(currentList['items'][groupIndex]),
@@ -312,18 +428,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Anzeige des Kategorienamens und der Artikelanzahl im eingeklappten Zustand
                 Row(
                   children: [
+                    // Hinzufügen des dynamischen Icons basierend auf der Kategorie.
+                    categoryIconWidget,
+                    const SizedBox(width: 8),
                     Text(
                       categoryName,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 20.0,
                         // Farbwechsel basierend auf dem eingeklappten Zustand
-                        color: currentList['items'][groupIndex]['isCollapsed']
-                            ? Colors.grey
-                            : Colors.black,
+                        color: isCollapsed ? Colors.grey : Colors.black,
                       ),
                     ),
-                    if (currentList['items'][groupIndex]['isCollapsed'])
+                    if (isCollapsed)
                       Row(
                         children: [
                           const SizedBox(width: 8),
@@ -367,7 +484,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const Text(
                             ')',
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.grey,
                               fontWeight: FontWeight.bold,
                             ),
@@ -380,7 +497,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           // Die Aufgabenliste wird nur angezeigt, wenn sie nicht eingeklappt ist.
-          if (!currentList['items'][groupIndex]['isCollapsed'])
+          if (!isCollapsed)
             Column(
               children: [
                 for (
